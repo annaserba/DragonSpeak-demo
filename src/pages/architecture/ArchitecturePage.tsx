@@ -1,7 +1,14 @@
 import { useLanguageStore } from "../../app/providers/languageStore";
 import { getDictionary } from "dragonspeak";
 
-const layers = ["app", "pages", "widgets", "features", "entities", "shared"];
+const layers = [
+  "demo app: app/providers + router",
+  "demo app: pages/widgets/features/entities",
+  "dragonspeak package: events/state/reducer",
+  "dragonspeak package: MockQuestSocket",
+  "dragonspeak package: i18n + scene registry",
+  "dragonspeak package: RestaurantThreeScene + DragonSeller",
+];
 
 export function ArchitecturePage() {
   const language = useLanguageStore((state) => state.language);

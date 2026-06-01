@@ -25,13 +25,44 @@ Detailed architecture artifacts:
 - [Описание архитектуры на русском](docs/architecture/ARCHITECTURE.ru.md)
 
 ```text
-MockQuestSocket
+DragonSpeak-demo UI
+  -> dragonspeak/MockQuestSocket
   -> typed GameEvent stream
   -> buffered Zustand store
-  -> gameReducer / quest state machine
+  -> dragonspeak/gameReducer
   -> pages, widgets, features, entities
   -> Developer Event Inspector
 ```
+
+```text
+DragonSpeak-demo/
+  src/
+    app/               app router and providers
+    pages/             route-level screens
+    widgets/           composed UI blocks
+    features/          user actions and feature controls
+    entities/          app-level view models
+
+DragonSpeak/
+  packages/dragonspeak/src/
+    events.ts          typed GameEvent contract
+    state.ts           GameState and initial state
+    reducer.ts         pure event -> state reducer
+    questMachine.ts    Shanghai restaurant quest machine
+    mockQuestSocket.ts mocked realtime transport
+    i18n.ts            EN/RU dictionaries
+    registry.ts        questId -> lazy 3D scene loader
+    RestaurantThreeScene.tsx
+    DragonSeller.ts    extracted 3D seller model
+```
+
+The demo app depends on the shared package through `scripts/setup.sh`, which links:
+
+```text
+node_modules/dragonspeak -> ../DragonSpeak/packages/dragonspeak
+```
+
+The UI sends intent to the mock socket and never mutates quest state directly. All quest progress is derived from typed events exported by the shared package.
 
 ```text
 src/
@@ -40,10 +71,6 @@ src/
   widgets/             composed UI blocks
   features/            user actions and feature controls
   entities/            domain data models
-  shared/
-    api/mock-websocket mocked realtime transport
-    game-engine/       events, state, reducer, quest machine
-    lib/               utilities
 ```
 
 ## Tech Stack
@@ -91,14 +118,15 @@ This project is configured for Vercel with `vercel.json`:
 ## Frontend Highlights
 
 - Realtime WebSocket event streaming
-- Event-driven quest engine
-- Typed state machine
+- Event-driven quest engine from the `dragonspeak` package
+- Typed state machine and reducer contract
 - Reconnect handling
 - Event buffering
 - Developer Event Inspector
 - EN/RU interface language switcher
-- Interactive Three.js restaurant scene
-- Modular frontend architecture
+- Interactive Three.js restaurant scene loaded through the package scene registry
+- Extracted `DragonSeller` 3D model factory
+- Modular app architecture plus reusable shared package
 - Zustand store
 - TanStack Table vocabulary screen
 - Testable business logic

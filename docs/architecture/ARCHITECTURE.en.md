@@ -16,18 +16,26 @@ The implementation goal is to demonstrate Senior Frontend skills: typed event mo
 ## Repository Shape
 
 ```text
-src/
-  app/
-    providers/              Zustand stores
-    router/                 React Router configuration
-  pages/                    Route-level screens
-  widgets/                  Composed UI sections
-  features/                 User-facing actions and controls
-  entities/                 Domain data and models
-  shared/
-    api/mock-websocket/     Mock realtime transport
-    game-engine/            Events, state, reducer, quest machine
-    lib/                    Formatting and i18n helpers
+DragonSpeak-demo/
+  src/
+    app/                    React Router and Zustand integration
+    pages/                  Route-level screens
+    widgets/                Composed UI sections
+    features/               User-facing actions and controls
+    entities/               App-level view models
+  node_modules/dragonspeak  Symlink to ../DragonSpeak/packages/dragonspeak
+
+DragonSpeak/
+  packages/dragonspeak/src/
+    events.ts               Typed GameEvent contract
+    state.ts                GameState and initial state
+    reducer.ts              Pure event -> state reducer
+    questMachine.ts         Shanghai restaurant quest machine
+    mockQuestSocket.ts      Mock realtime transport
+    i18n.ts                 EN/RU dictionaries
+    registry.ts             questId -> lazy 3D scene loader
+    RestaurantThreeScene.tsx
+    DragonSeller.ts         Extracted 3D seller model factory
 ```
 
 ## Runtime Flow
@@ -35,15 +43,18 @@ src/
 ```mermaid
 flowchart LR
   UI["React UI"]
+  Package["dragonspeak package"]
   Socket["MockQuestSocket"]
   Buffer["Zustand event buffer"]
   Reducer["gameReducer"]
   State["Derived GameState"]
   Inspector["Developer Event Inspector"]
 
-  UI -- "player intent: start / answer / reconnect" --> Socket
+  UI -- "player intent: start / answer / reconnect" --> Package
+  Package --> Socket
   Socket -- "typed GameEvent stream" --> Buffer
-  Buffer -- "flush burst events" --> Reducer
+  Buffer -- "flush burst events" --> Package
+  Package --> Reducer
   Reducer -- "pure state transition" --> State
   State --> UI
   State --> Inspector
@@ -55,21 +66,41 @@ The UI does not directly modify quest progress. Components send intent to the mo
 
 Core files:
 
-- `src/shared/game-engine/events.ts`
-- `src/shared/game-engine/state.ts`
-- `src/shared/game-engine/reducer.ts`
-- `src/shared/game-engine/questMachine.ts`
+- `../DragonSpeak/packages/dragonspeak/src/events.ts`
+- `../DragonSpeak/packages/dragonspeak/src/state.ts`
+- `../DragonSpeak/packages/dragonspeak/src/reducer.ts`
+- `../DragonSpeak/packages/dragonspeak/src/questMachine.ts`
 
 The event contract models the domain:
 
 ```ts
 type GameEvent =
   | { type: "QUEST_STARTED"; questId: string; timestamp: number }
-  | { type: "NPC_MESSAGE"; npcId: string; text: string; pinyin: string; translation: string; timestamp: number }
+  | {
+      type: "NPC_MESSAGE";
+      npcId: string;
+      text: string;
+      pinyin: string;
+      translation: string;
+      timestamp: number;
+    }
   | { type: "CHOICES_SHOWN"; questionId: string; choices: Choice[]; timestamp: number }
-  | { type: "PLAYER_ANSWERED"; playerId: string; answerId: string; correct: boolean; timestamp: number }
+  | {
+      type: "PLAYER_ANSWERED";
+      playerId: string;
+      answerId: string;
+      correct: boolean;
+      timestamp: number;
+    }
   | { type: "SCORE_UPDATED"; playerId: string; score: number; timestamp: number }
-  | { type: "WORD_UNLOCKED"; wordId: string; hanzi: string; pinyin: string; meaning: string; timestamp: number }
+  | {
+      type: "WORD_UNLOCKED";
+      wordId: string;
+      hanzi: string;
+      pinyin: string;
+      meaning: string;
+      timestamp: number;
+    }
   | { type: "LEADERBOARD_UPDATED"; players: PlayerScore[]; timestamp: number }
   | { type: "QUEST_COMPLETED"; questId: string; reward: Reward; timestamp: number };
 ```
@@ -83,7 +114,7 @@ This makes the frontend easy to reason about:
 
 ## Mock WebSocket Layer
 
-`src/shared/api/mock-websocket/mockQuestSocket.ts` simulates server behavior:
+`../DragonSpeak/packages/dragonspeak/src/mockQuestSocket.ts` simulates server behavior:
 
 - connection lifecycle
 - reconnect simulation
@@ -134,7 +165,7 @@ flowchart TD
   Architecture["pages/architecture"]
   Widgets["widgets"]
   Features["features"]
-  Shared["shared"]
+  Package["dragonspeak package"]
 
   App --> Home
   App --> Quest
@@ -142,8 +173,8 @@ flowchart TD
   App --> Architecture
   Quest --> Widgets
   Quest --> Features
-  Widgets --> Shared
-  Features --> Shared
+  Widgets --> Package
+  Features --> Package
 ```
 
 The frontend follows a Feature-Sliced-inspired layout:
@@ -151,12 +182,12 @@ The frontend follows a Feature-Sliced-inspired layout:
 - `pages` define route-level screens.
 - `widgets` compose meaningful UI blocks such as quest scene, leaderboard, and event inspector.
 - `features` hold user actions such as answer choices, realtime controls, and language switcher.
-- `entities` contain domain data models.
-- `shared` contains reusable infrastructure and domain engine code.
+- `entities` contain app-level view models.
+- the `dragonspeak` package contains reusable infrastructure, dictionaries, domain engine code, mock socket, and 3D scene registry.
 
 ## 3D Scene
 
-`src/widgets/quest-scene/RestaurantThreeScene.tsx` implements a lightweight interactive Three.js restaurant scene:
+The app uses `getSceneLoader` from `dragonspeak`. The shared package lazy-loads `RestaurantThreeScene.tsx`, and the dragon NPC seller is extracted into `DragonSeller.ts`:
 
 - lazy-loaded with `React.lazy`
 - isolated from quest business logic
@@ -173,7 +204,7 @@ DragonSpeak supports English and Russian UI text through:
 
 - `src/app/providers/languageStore.ts`
 - `src/features/language-switcher/LanguageSwitcher.tsx`
-- `src/shared/lib/i18n.ts`
+- `../DragonSpeak/packages/dragonspeak/src/i18n.ts`
 
 This public demo uses a typed dictionary instead of a full i18n framework. That keeps the implementation readable while preserving a clear migration path to `i18next` or another translation workflow in a larger product.
 
